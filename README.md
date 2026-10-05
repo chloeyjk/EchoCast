@@ -64,6 +64,18 @@ A backend service for personalized podcast content generation, featuring JWT aut
    alembic upgrade head
    ```
 
+## 🐳 Quick Start with Docker
+
+```bash
+cp .env.example .env   # fill in SECRET_KEY, OPENAI_API_KEY, NEWS_API_KEY
+docker compose up --build
+```
+
+This starts PostgreSQL (with the `pgvector` extension), Redis, the FastAPI service
+(http://localhost:8000/docs, migrations run on startup) and a Celery worker.
+
+Run the tests locally with `pip install -r requirements-dev.txt && pytest --cov=app`.
+
 ## 🚦 Running the Application
 
 1. **Start Redis server**
