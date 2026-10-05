@@ -1,16 +1,14 @@
-import os
 import requests
 from openai import OpenAI
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import ArticleSummary
+from app.config import get_settings
 from celery_app import celery_app
-from dotenv import load_dotenv
 
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+settings = get_settings()
+client = OpenAI(api_key=settings.openai_api_key)
+NEWS_API_KEY = settings.news_api_key
 
 # still keep your test
 @celery_app.task(name="app.tasks.add")
@@ -31,7 +29,7 @@ def summarize_article(title, url, content):
     if not content:
         return None
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=settings.openai_model,
         messages=[{"role": "user", "content": f"Summarize this article:\n\n{content}"}],
         max_tokens=150,
     )

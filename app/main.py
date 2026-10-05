@@ -5,8 +5,6 @@ from datetime import timedelta
 
 from . import database, models, schemas, crud, auth
 
-models.Base.metadata.create_all(bind=database.engine)
-
 app = FastAPI()
 
 @app.post("/register", response_model=schemas.User)
