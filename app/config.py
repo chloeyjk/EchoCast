@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     openai_api_key: str
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-6-luna"
     news_api_key: str
 
     redis_url: str = "redis://localhost:6379/0"

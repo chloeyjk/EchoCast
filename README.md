@@ -7,7 +7,7 @@ A backend service for personalized podcast content generation, featuring JWT aut
 - **User Authentication & Authorization**: JWT-based secure authentication with OAuth2 password flow
 - **User Preference Management**: Store and retrieve personalized podcast topic preferences
 - **Asynchronous News Aggregation**: Celery-powered background tasks for fetching news from multiple categories
-- **AI-Powered Summarization**: OpenAI GPT-4 integration for intelligent article summarization
+- **AI-Powered Summarization**: OpenAI LLM integration (configurable via `OPENAI_MODEL`, default `gpt-6-luna`) for intelligent article summarization
 - **RESTful API**: Clean, well-documented endpoints built with FastAPI
 - **Database Migration Support**: Alembic for version-controlled schema management
 
@@ -17,7 +17,7 @@ A backend service for personalized podcast content generation, featuring JWT aut
 - **Database**: SQLAlchemy ORM with PostgreSQL/SQLite
 - **Authentication**: JWT (python-jose), OAuth2, Passlib (bcrypt)
 - **Task Queue**: Celery with Redis broker
-- **AI Integration**: OpenAI GPT-4
+- **AI Integration**: OpenAI (`gpt-6-luna` by default)
 - **External API**: NewsAPI for real-time news fetching
 - **Migration Tool**: Alembic
 
@@ -109,7 +109,7 @@ Interactive API documentation: `http://localhost:8000/docs`
 
 ### Background Tasks
 - News fetching and article summarization run asynchronously via Celery
-- Articles are automatically summarized using GPT-4 and stored in the database
+- Articles are automatically summarized using the configured OpenAI model and stored in the database
 
 ## 🏗️ Architecture
 
@@ -149,7 +149,7 @@ podcast_backend/
 
 1. Celery task fetches top headlines from NewsAPI based on topic
 2. Articles are queued for summarization
-3. OpenAI GPT-4 generates concise summaries
+3. The configured OpenAI model generates concise summaries
 4. Summaries are persisted to database for future retrieval
 
 ## 🤝 Contributing
