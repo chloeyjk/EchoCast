@@ -13,5 +13,14 @@ celery_app = Celery(
 celery_app.conf.task_routes = {
     "app.tasks.fetch_news": {"queue": "news"},
     "app.tasks.summarize_article": {"queue": "summary"},
+    "app.tasks.ingest_topics": {"queue": "ingest"},
+    "app.tasks.ingest_topic": {"queue": "ingest"},
+    "app.tasks.ingest_article": {"queue": "ingest"},
+}
+celery_app.conf.beat_schedule = {
+    "ingest-topics": {
+        "task": "app.tasks.ingest_topics",
+        "schedule": settings.ingest_interval_minutes * 60,
+    },
 }
 celery_app.autodiscover_tasks(["app"])

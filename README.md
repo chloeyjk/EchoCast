@@ -72,7 +72,7 @@ docker compose up --build
 ```
 
 This starts PostgreSQL (with the `pgvector` extension), Redis, the FastAPI service
-(http://localhost:8000/docs, migrations run on startup) and a Celery worker.
+(http://localhost:8000/docs, migrations run on startup) a Celery worker and a Celery beat scheduler.
 
 Run the tests locally with `pip install -r requirements-dev.txt && pytest --cov=app`.
 
@@ -109,6 +109,7 @@ Interactive API documentation: `http://localhost:8000/docs`
 
 ### Background Tasks
 - News fetching and article summarization run asynchronously via Celery
+- Celery beat runs `ingest_topics` every `INGEST_INTERVAL_MINUTES` (default 60): for each user preference topic it fetches headlines, downloads the full article text, skips articles whose normalized URL or text hash is already stored, splits the text into overlapping chunks, embeds them, and saves `articles` and `chunks` (pgvector)
 - Articles are automatically summarized using the configured OpenAI model and stored in the database
 
 ## 🏗️ Architecture
