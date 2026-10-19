@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     openai_api_key: str
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-6-luna"
     news_api_key: str
 
     embedding_model: str = "text-embedding-3-small"

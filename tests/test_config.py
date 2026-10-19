@@ -28,7 +28,7 @@ def test_applies_defaults_for_optional_values():
 
     assert settings.algorithm == "HS256"
     assert settings.access_token_expire_minutes == 30
-    assert settings.openai_model == "gpt-4o-mini"
+    assert settings.openai_model == "gpt-6-luna"
     assert settings.redis_url == "redis://localhost:6379/0"
 
 

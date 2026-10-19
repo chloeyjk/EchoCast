@@ -34,7 +34,7 @@ def summarize_article(title, url, content):
     resp = client.chat.completions.create(
         model=settings.openai_model,
         messages=[{"role": "user", "content": f"Summarize this article:\n\n{content}"}],
-        max_tokens=150,
+        max_completion_tokens=150,
     )
     summary = resp.choices[0].message.content.strip()
 
