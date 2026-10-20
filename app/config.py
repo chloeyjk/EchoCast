@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     ingest_interval_minutes: int = 60
     ingest_articles_per_topic: int = 10
 
+    retrieval_candidate_k: int = 20
+    retrieval_final_k: int = 5
+
     redis_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 

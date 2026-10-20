@@ -112,6 +112,16 @@ Interactive API documentation: `http://localhost:8000/docs`
 - Celery beat runs `ingest_topics` every `INGEST_INTERVAL_MINUTES` (default 60): for each user preference topic it fetches headlines, downloads the full article text, skips articles whose normalized URL or text hash is already stored, splits the text into overlapping chunks, embeds them, and saves `articles` and `chunks` (pgvector)
 - Articles are automatically summarized using the configured OpenAI model and stored in the database
 
+### Retrieval
+`app/retrieval` is an internal library (no HTTP endpoint yet) that, given a user's
+topics and a query string, returns the best matching chunks for grounding a summary:
+1. Embed the query and fetch the `RETRIEVAL_CANDIDATE_K` nearest chunks (default 20)
+   whose article topic is in the requested list, ordered by pgvector cosine distance
+   (an HNSW index backs this on Postgres; plain Python cosine distance is used on SQLite).
+2. Re-rank the candidates with an LLM call and keep the top `RETRIEVAL_FINAL_K` (default 5).
+   Any re-ranker failure (bad JSON, wrong length, out-of-range score, API error) falls back
+   to the vector order.
+
 ## 🏗️ Architecture
 
 ```
@@ -123,7 +133,9 @@ podcast_backend/
 │   ├── auth.py         # JWT authentication and password hashing
 │   ├── crud.py         # Database CRUD operations
 │   ├── database.py     # Database connection and session management
-│   └── tasks.py        # Celery background tasks
+│   ├── tasks.py        # Celery background tasks
+│   ├── ingest/         # Fetching, dedup, chunking and embedding of articles
+│   └── retrieval/      # Nearest-chunk search and LLM re-ranking over embedded chunks
 ├── alembic/            # Database migration files
 ├── celery_app.py       # Celery configuration
 └── requirements.txt    # Project dependencies
