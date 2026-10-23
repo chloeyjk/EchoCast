@@ -108,9 +108,9 @@ Interactive API documentation: `http://localhost:8000/docs`
 - `GET /preferences` - Retrieve user's topic preferences (authenticated)
 
 ### Background Tasks
-- News fetching and article summarization run asynchronously via Celery
+- News fetching and summarization run asynchronously via Celery
 - Celery beat runs `ingest_topics` every `INGEST_INTERVAL_MINUTES` (default 60): for each user preference topic it fetches headlines, downloads the full article text, skips articles whose normalized URL or text hash is already stored, splits the text into overlapping chunks, embeds them, and saves `articles` and `chunks` (pgvector)
-- Articles are automatically summarized using the configured OpenAI model and stored in the database
+- `summarize_topic` retrieves grounded chunks for a topic, has the configured OpenAI model write citation-backed claims, and persists them as a `Summary` and its `Claim`s
 
 ### Retrieval
 `app/retrieval` is an internal library (no HTTP endpoint yet) that, given a user's
@@ -121,6 +121,17 @@ topics and a query string, returns the best matching chunks for grounding a summ
 2. Re-rank the candidates with an LLM call and keep the top `RETRIEVAL_FINAL_K` (default 5).
    Any re-ranker failure (bad JSON, wrong length, out-of-range score, API error) falls back
    to the vector order.
+
+### Citation-grounded summaries
+`app/summarize` turns retrieved chunks into claims that can't drift from their sources:
+1. `LLMWriter` asks the model for one claim per line, each ending in the `[chunk_id]` of the
+   single chunk it's grounded in, with the candidate chunk text wrapped in delimiters the
+   model is told to treat as data, not instructions.
+2. The response is parsed into `GeneratedClaim`s and validated against the retrieved chunk
+   ids — any claim citing an id outside that set raises `UngroundedClaimError` instead of
+   being silently dropped or made up.
+3. Validated claims are persisted as a `Summary` row with child `Claim` rows, each keeping
+   its `source_chunk_id` for later display or fact-checking.
 
 ## 🏗️ Architecture
 
@@ -135,7 +146,8 @@ podcast_backend/
 │   ├── database.py     # Database connection and session management
 │   ├── tasks.py        # Celery background tasks
 │   ├── ingest/         # Fetching, dedup, chunking and embedding of articles
-│   └── retrieval/      # Nearest-chunk search and LLM re-ranking over embedded chunks
+│   ├── retrieval/      # Nearest-chunk search and LLM re-ranking over embedded chunks
+│   └── summarize/      # Citation-grounded claim generation, validation and persistence
 ├── alembic/            # Database migration files
 ├── celery_app.py       # Celery configuration
 └── requirements.txt    # Project dependencies
@@ -156,14 +168,19 @@ podcast_backend/
 
 **PodcastPreference**: id, topic, user_id (FK)
 
-**ArticleSummary**: id, title, url, summary
+**Article**: id, url, title, topic, content, content_hash, created_at
+
+**Chunk**: id, article_id (FK), position, text, embedding (pgvector)
+
+**Summary**: id, topic, created_at
+
+**Claim**: id, summary_id (FK), text, source_chunk_id (FK), position
 
 ## 🔄 Background Task Flow
 
-1. Celery task fetches top headlines from NewsAPI based on topic
-2. Articles are queued for summarization
-3. The configured OpenAI model generates concise summaries
-4. Summaries are persisted to database for future retrieval
+1. Celery beat queues `ingest_topic` for each user preference topic, which fetches headlines, dedups, chunks and embeds them into `articles` and `chunks`
+2. `summarize_topic` retrieves the best matching chunks for a topic, has the LLM write one claim per chunk it cites, and rejects any claim citing a chunk outside the retrieved set
+3. Validated claims are persisted as a `Summary` with its `Claim`s, each still linked to the chunk that grounds it
 
 ## 🤝 Contributing
 
