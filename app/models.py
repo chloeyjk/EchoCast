@@ -22,15 +22,6 @@ class PodcastPreference(Base):
     owner = relationship("User", back_populates="preferences")
 
 
-class ArticleSummary(Base):
-    __tablename__ = "article_summaries"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    url = Column(String, nullable=True)
-    summary = Column(Text, nullable=False)
-
-
 EMBEDDING_DIMENSIONS = 1536
 
 
@@ -59,3 +50,28 @@ class Chunk(Base):
     embedding = Column(Vector(EMBEDDING_DIMENSIONS).with_variant(JSON, "sqlite"), nullable=False)
 
     article = relationship("Article", back_populates="chunks")
+
+
+class Summary(Base):
+    __tablename__ = "summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    topic = Column(String, index=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    claims = relationship("Claim", back_populates="summary", cascade="all, delete-orphan")
+
+
+class Claim(Base):
+    """A single citation-grounded claim, carrying the chunk id it was generated from."""
+
+    __tablename__ = "claims"
+
+    id = Column(Integer, primary_key=True, index=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), index=True, nullable=False)
+    text = Column(Text, nullable=False)
+    source_chunk_id = Column(Integer, ForeignKey("chunks.id", ondelete="CASCADE"), index=True, nullable=False)
+    position = Column(Integer, nullable=False)
+
+    summary = relationship("Summary", back_populates="claims")
+    source_chunk = relationship("Chunk")

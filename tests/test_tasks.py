@@ -20,34 +20,28 @@ def session_factory(monkeypatch):
     return factory
 
 
-def _fake_completion(text):
-    message = SimpleNamespace(content=text)
-    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+def test_summarize_topic_calls_summarize_service_and_closes_session(monkeypatch, session_factory):
+    fake_summary = SimpleNamespace(id=7, claims=[object(), object()])
+    summarize = MagicMock(return_value=fake_summary)
+    monkeypatch.setattr(tasks.summarize_service, "summarize", summarize)
+    close = MagicMock(wraps=session_factory().close)
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: SimpleNamespace(close=close))
+
+    result = tasks.summarize_topic("technology")
+
+    assert summarize.call_args.kwargs["topics"] == ["technology"]
+    assert "technology" in summarize.call_args.kwargs["query"]
+    assert close.called
+    assert "7" in result
+    assert "2" in result
 
 
-def test_fetch_news_queues_at_most_five_articles(monkeypatch):
-    articles = [{"title": f"t{i}", "url": f"u{i}", "content": "c"} for i in range(8)]
-    monkeypatch.setattr(tasks.requests, "get", lambda url: MagicMock(json=lambda: {"articles": articles}))
-    delay = MagicMock()
-    monkeypatch.setattr(tasks.summarize_article, "delay", delay)
+def test_summarize_topic_closes_session_even_when_summarize_raises(monkeypatch, session_factory):
+    monkeypatch.setattr(tasks.summarize_service, "summarize", MagicMock(side_effect=RuntimeError("boom")))
+    close = MagicMock(wraps=session_factory().close)
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: SimpleNamespace(close=close))
 
-    result = tasks.fetch_news("technology")
+    with pytest.raises(RuntimeError):
+        tasks.summarize_topic("technology")
 
-    assert delay.call_count == 5
-    assert "technology" in result
-
-
-def test_summarize_article_skips_empty_content(session_factory):
-    assert tasks.summarize_article("title", "url", None) is None
-
-
-def test_summarize_article_persists_summary_using_configured_model(monkeypatch, session_factory):
-    create = MagicMock(return_value=_fake_completion("  short summary  "))
-    monkeypatch.setattr(tasks.client.chat.completions, "create", create)
-
-    tasks.summarize_article("Title", "http://x", "body text")
-
-    assert create.call_args.kwargs["model"] == tasks.settings.openai_model
-    with session_factory() as db:
-        saved = db.query(models.ArticleSummary).one()
-    assert (saved.title, saved.summary) == ("Title", "short summary")
+    assert close.called
